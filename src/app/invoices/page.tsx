@@ -104,12 +104,24 @@ function ConfidenceIndicator({ value }: { value: number }) {
   );
 }
 
+// Define interface for product items
+interface Product {
+  id: number;
+  name: string;
+  nameConfidence: number;
+  quantity: number;
+  quantityConfidence: number;
+  price: number;
+  priceConfidence: number;
+  isRegistered: boolean;
+}
+
 export default function InvoiceDisplay() {
   const [openSupplierDialog, setOpenSupplierDialog] = useState(false)
   const [openProductDialog, setOpenProductDialog] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<any>(null)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
 
-  const handleRegisterProduct = (product: any) => {
+  const handleRegisterProduct = (product: Product) => {
     setSelectedProduct(product)
     setOpenProductDialog(true)
   }
@@ -450,7 +462,7 @@ export default function InvoiceDisplay() {
                   </TableHeader>
                   <TableBody>
                     <TableRow>
-                      <TableCell>Monitor UltraWide 32"</TableCell>
+                      <TableCell>Monitor UltraWide 32</TableCell>
                       <TableCell>MON-32UW</TableCell>
                       <TableCell className="text-right">R$ 489.99</TableCell>
                       <TableCell>
@@ -460,7 +472,7 @@ export default function InvoiceDisplay() {
                       </TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell>Monitor UltraWide 34"</TableCell>
+                      <TableCell>Monitor UltraWide 34</TableCell>
                       <TableCell>MON-34UW</TableCell>
                       <TableCell className="text-right">R$ 529.99</TableCell>
                       <TableCell>

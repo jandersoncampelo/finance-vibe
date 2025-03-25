@@ -102,7 +102,7 @@ export default function InvoiceDisplay() {
         </CardHeader>
         <CardContent>
           {!invoiceData.supplier.isRegistered && (
-            <Alert variant="warning" className="mb-4">
+            <Alert variant="default" className="mb-4">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Fornecedor não cadastrado</AlertTitle>
               <AlertDescription>
@@ -252,7 +252,7 @@ export default function InvoiceDisplay() {
         </CardHeader>
         <CardContent>
           {invoiceData.items.some((item) => !item.isRegistered) && (
-            <Alert variant="warning" className="mb-4">
+            <Alert variant="default" className="mb-4">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Produtos não cadastrados</AlertTitle>
               <AlertDescription>

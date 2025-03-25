@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { BarChart, Calendar, DollarSign, LineChart, Package, Percent, PieChart, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
+import { BarChart, Calendar, DollarSign, LineChart, Percent, PieChart, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
