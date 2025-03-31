@@ -1,6 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import api from "@/lib/api"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 import { BarChart, Calendar, DollarSign, LineChart, Percent, PieChart, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -43,8 +46,63 @@ const financialOverview = {
 }
 
 export default function Dashboard() {
-  const [timeframe, setTimeframe] = useState("month")
-  
+  interface DashboardData {
+    pendingInvoices: number;
+  }
+
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Example of fetching dashboard data using the API service
+    const fetchDashboardData = async () => {
+      setIsLoading(true)
+      try {
+        // This is a placeholder - you'll need to implement the actual endpoint
+        // const data = await api.dashboard.getSummary()
+        // setDashboardData(data)
+        
+        // For demo purposes - fetch pending invoices to show on dashboard
+        const pendingInvoices = await api.invoice.getPendingInvoices()
+        //setDashboardData({ pendingInvoices })
+        setError(null)
+      } catch (err) {
+        setError('Error fetching dashboard data: ' + (err instanceof Error ? err.message : 'Unknown error'))
+        console.error('Error fetching dashboard data:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-6">
+        <Alert>
+          <AlertTitle>Loading</AlertTitle>
+          <AlertDescription>
+            Carregando dados do dashboard...
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto py-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
   // Format currency helper
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { 
@@ -66,7 +124,7 @@ export default function Dashboard() {
             <Calendar className="h-4 w-4" />
             <span>Hoje</span>
           </Button>
-          <Tabs defaultValue={timeframe} onValueChange={setTimeframe} className="w-[250px]">
+          <Tabs defaultValue="" className="w-[250px]">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="week">Semana</TabsTrigger>
               <TabsTrigger value="month">Mês</TabsTrigger>

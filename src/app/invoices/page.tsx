@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AlertCircle, CheckCircle2, FileText, Plus, Search, ShoppingBag, Truck } from 'lucide-react'
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -21,6 +21,8 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import api from "@/lib/api"
+import { Product, PendingInvoice } from "../../lib/types"
 
 // Mock data - in a real app, this would come from your API or database
 const invoiceData = {
@@ -104,30 +106,131 @@ function ConfidenceIndicator({ value }: { value: number }) {
   );
 }
 
-// Define interface for product items
-interface Product {
-  id: number;
-  name: string;
-  nameConfidence: number;
-  quantity: number;
-  quantityConfidence: number;
-  price: number;
-  priceConfidence: number;
-  isRegistered: boolean;
-}
+
 
 export default function InvoiceDisplay() {
   const [openSupplierDialog, setOpenSupplierDialog] = useState(false)
   const [openProductDialog, setOpenProductDialog] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [pendingInvoices, setPendingInvoices] = useState<PendingInvoice | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Function to fetch pending invoices using the API service
+    const fetchPendingInvoices = async () => {
+      setIsLoading(true)
+      try {
+        const data = await api.invoice.getPendingInvoices()
+        setPendingInvoices(data)
+        setError(null)
+      } catch (err) {
+        setError('Error fetching pending invoices: ' + (err instanceof Error ? err.message : 'Unknown error'))
+        console.error('Error fetching pending invoices:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    // Call the fetch function when component mounts
+    fetchPendingInvoices()
+  }, [])
 
   const handleRegisterProduct = (product: Product) => {
     setSelectedProduct(product)
     setOpenProductDialog(true)
   }
 
+  // Use the first pending invoice or fall back to mock data if API call fails
+  const invoiceData = pendingInvoices !== null ? pendingInvoices : {
+    id: "INV-2023-0042",
+    confidence: 90,
+    merchant: {
+      name: "Tech Supplies Ltd",
+      nameConfidence: 85,
+      cnpj: "12.345.678/0001-90",
+      cnpjConfidence: 92,
+      address: "123 Tech Street, Tech City",
+      addressConfidence: 70,
+      isRegistered: false
+    },
+    items: [
+      {
+        code: 1,
+        codeConfidence: 95,
+        description: "Laptop Dell XPS 15",
+        descriptionConfidence: 96,
+        quantity: 2,
+        quantityConfidence: 99,
+        price: 899.99,
+        priceConfidence: 95,
+        unit: "un",
+        unitConfidence: 100,
+        totalPrice: 1799.98,
+        totalPriceConfidence: 97,
+        isRegistered: true,
+      },
+      {
+        code: 2,
+        codeConfidence: 90,
+        description: "Monitor UltraWide 34\"",
+        descriptionConfidence: 78,
+        quantity: 1,
+        quantityConfidence: 99,
+        price: 499.99,
+        priceConfidence: 85,
+        unit: "un",
+        unitConfidence: 100,
+        totalPrice: 499.99,
+        totalPriceConfidence: 92,
+        isRegistered: false,
+      },
+      {
+        code: 3,
+        codeConfidence: 88,
+        description: "Wireless Keyboard",
+        descriptionConfidence: 88,
+        quantity: 3,
+        quantityConfidence: 97,
+        price: 50.25,
+        priceConfidence: 90,
+        unit: "un",
+        unitConfidence: 100,
+        totalPrice: 150.75,
+        totalPriceConfidence: 95,
+        isRegistered: true,
+      },
+    ],
+    total: 2450.75,
+    totalConfidence: 98,
+    totalTax: 245.07,
+    totalTaxConfidence: 90,
+    transactionDate: "2023-11-15",
+    transactionDateConfidence: 95,
+    isRegistered: false
+  };
+
   return (
     <div className="container mx-auto py-6 px-4 max-w-5xl">
+      {isLoading && (
+        <Alert className="mb-6">
+          <AlertTitle>Loading</AlertTitle>
+          <AlertDescription>
+            Carregando faturas pendentes...
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro</AlertTitle>
+          <AlertDescription>
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <FileText className="h-6 w-6" />
@@ -146,7 +249,7 @@ export default function InvoiceDisplay() {
               <Truck className="h-5 w-5" />
               Informações do Fornecedor
             </CardTitle>
-            {invoiceData.supplier.isRegistered ? (
+            {invoiceData.merchant.isRegistered ? (
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                 Cadastrado
@@ -159,7 +262,7 @@ export default function InvoiceDisplay() {
           </div>
         </CardHeader>
         <CardContent>
-          {!invoiceData.supplier.isRegistered && (
+          {!invoiceData.merchant.isRegistered && (
             <Alert variant="default" className="mb-4">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Fornecedor não cadastrado</AlertTitle>
@@ -172,22 +275,22 @@ export default function InvoiceDisplay() {
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Nome</p>
-              <p>{invoiceData.supplier.name}</p>
-              <ConfidenceIndicator value={invoiceData.supplier.nameConfidence} />
+              <p>{invoiceData.merchant.name}</p>
+              <ConfidenceIndicator value={invoiceData.merchant.nameConfidence} />
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">CNPJ</p>
-              <p>{invoiceData.supplier.taxId}</p>
-              <ConfidenceIndicator value={invoiceData.supplier.taxIdConfidence} />
+              <p>{invoiceData.merchant.cnpj}</p>
+              <ConfidenceIndicator value={invoiceData.merchant.cnpjConfidence} />
             </div>
             <div className="md:col-span-2">
               <p className="text-sm font-medium text-muted-foreground">Endereço</p>
-              <p>{invoiceData.supplier.address}</p>
-              <ConfidenceIndicator value={invoiceData.supplier.addressConfidence} />
+              <p>{invoiceData.merchant.address}</p>
+              <ConfidenceIndicator value={invoiceData.merchant.addressConfidence} />
             </div>
           </div>
         </CardContent>
-        {!invoiceData.supplier.isRegistered && (
+        {!invoiceData.merchant.isRegistered && (
           <CardFooter>
             <Dialog open={openSupplierDialog} onOpenChange={setOpenSupplierDialog}>
               <DialogTrigger asChild>
@@ -204,15 +307,15 @@ export default function InvoiceDisplay() {
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
                     <Label htmlFor="name">Nome</Label>
-                    <Input id="name" defaultValue={invoiceData.supplier.name} />
+                    <Input id="name" defaultValue={invoiceData.merchant.name} />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="taxId">CNPJ</Label>
-                    <Input id="taxId" defaultValue={invoiceData.supplier.taxId} />
+                    <Input id="taxId" defaultValue={invoiceData.merchant.cnpj} />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="address">Endereço</Label>
-                    <Input id="address" defaultValue={invoiceData.supplier.address} />
+                    <Input id="address" defaultValue={invoiceData.merchant.address} />
                   </div>
                 </div>
                 <DialogFooter>
@@ -289,20 +392,15 @@ export default function InvoiceDisplay() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Número da Fatura</p>
               <p>{invoiceData.id}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Data de Emissão</p>
-              <p>{invoiceData.date}</p>
-              <ConfidenceIndicator value={invoiceData.dateConfidence} />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Data de Vencimento</p>
-              <p>{invoiceData.dueDate}</p>
-              <ConfidenceIndicator value={invoiceData.dueDateConfidence} />
+              <p className="text-sm font-medium text-muted-foreground">Data da Transação</p>
+              <p>{invoiceData.transactionDate}</p>
+              <ConfidenceIndicator value={invoiceData.transactionDateConfidence} />
             </div>
           </div>
         </CardContent>
@@ -339,10 +437,10 @@ export default function InvoiceDisplay() {
               </TableHeader>
               <TableBody>
                 {invoiceData.items.map((item) => (
-                  <TableRow key={item.id}>
+                  <TableRow key={item.code}>
                     <TableCell>
-                      {item.name}
-                      <ConfidenceIndicator value={item.nameConfidence} />
+                      {item.description}
+                      <ConfidenceIndicator value={item.descriptionConfidence} />
                     </TableCell>
                     <TableCell className="text-right">
                       {item.quantity}
@@ -356,7 +454,7 @@ export default function InvoiceDisplay() {
                         <ConfidenceIndicator value={item.priceConfidence} />
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">R$ {(item.quantity * item.price).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">R$ {item.totalPrice.toFixed(2)}</TableCell>
                     <TableCell className="text-center">
                       {item.isRegistered ? (
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -371,7 +469,7 @@ export default function InvoiceDisplay() {
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center">
-                        <ConfidenceIndicator value={Math.round((item.nameConfidence + item.priceConfidence + item.quantityConfidence) / 3)} />
+                        <ConfidenceIndicator value={Math.round((item.descriptionConfidence + item.priceConfidence + item.quantityConfidence) / 3)} />
                       </div>
                     </TableCell>
                     <TableCell>
@@ -402,7 +500,7 @@ export default function InvoiceDisplay() {
         </CardContent>
         <CardFooter className="flex justify-end gap-2">
           <Button variant="outline">Cancelar</Button>
-          <Button disabled={!invoiceData.supplier.isRegistered || invoiceData.items.some((item) => !item.isRegistered)}>
+          <Button disabled={!invoiceData.merchant.isRegistered || invoiceData.items.some((item) => !item.isRegistered)}>
             Processar Fatura
           </Button>
         </CardFooter>
@@ -425,12 +523,12 @@ export default function InvoiceDisplay() {
               <div className="grid gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="productName">Nome do Produto</Label>
-                  <Input id="productName" defaultValue={selectedProduct?.name} />
+                  <Input id="productName" defaultValue={selectedProduct?.description} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="productCode">Código</Label>
-                    <Input id="productCode" placeholder="Código interno" />
+                    <Input id="productCode" placeholder="Código interno" defaultValue={selectedProduct?.code} />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="productPrice">Preço</Label>
