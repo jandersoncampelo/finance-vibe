@@ -29,7 +29,7 @@ async function fetchWrapper<T>(endpoint: string, options?: RequestInit): Promise
 
 // Invoice related API calls
 export const invoiceApi = {
-  getPendingInvoices: () => fetchWrapper<PendingInvoice>('/invoice/pendings'),
+  getPendingInvoices: () => fetchWrapper<PendingInvoice[]>('/invoice/pendings'),
   getInvoiceById: (id: string) => fetchWrapper<PendingInvoice>(`/invoice/${id}`),
   processInvoice: (id: string) => fetchWrapper<void>(`/invoice/${id}/process`, {
     method: 'POST',

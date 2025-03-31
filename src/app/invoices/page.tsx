@@ -24,58 +24,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import api from "@/lib/api"
 import { Product, PendingInvoice } from "../../lib/types"
 
-// Mock data - in a real app, this would come from your API or database
-const invoiceData = {
-  id: "INV-2023-0042",
-  date: "2023-11-15",
-  dateConfidence: 95,
-  dueDate: "2023-12-15",
-  dueDateConfidence: 90,
-  total: 2450.75,
-  totalConfidence: 98,
-  supplier: {
-    isRegistered: false,
-    name: "Tech Supplies Ltd",
-    nameConfidence: 85,
-    address: "123 Tech Street, Tech City",
-    addressConfidence: 70,
-    taxId: "12.345.678/0001-90",
-    taxIdConfidence: 92,
-  },
-  items: [
-    {
-      id: 1,
-      name: "Laptop Dell XPS 15",
-      nameConfidence: 96,
-      quantity: 2,
-      quantityConfidence: 99,
-      price: 899.99,
-      priceConfidence: 95,
-      isRegistered: true,
-    },
-    {
-      id: 2,
-      name: "Monitor UltraWide 34\"",
-      nameConfidence: 78,
-      quantity: 1,
-      quantityConfidence: 99,
-      price: 499.99,
-      priceConfidence: 85,
-      isRegistered: false,
-    },
-    {
-      id: 3,
-      name: "Wireless Keyboard",
-      nameConfidence: 88,
-      quantity: 3,
-      quantityConfidence: 97,
-      price: 50.25,
-      priceConfidence: 90,
-      isRegistered: true,
-    },
-  ],
-}
-
 function ConfidenceIndicator({ value }: { value: number }) {
   // Determine color based on confidence value
   const getColor = (confidence: number) => {
@@ -106,13 +54,12 @@ function ConfidenceIndicator({ value }: { value: number }) {
   );
 }
 
-
-
 export default function InvoiceDisplay() {
   const [openSupplierDialog, setOpenSupplierDialog] = useState(false)
   const [openProductDialog, setOpenProductDialog] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [pendingInvoices, setPendingInvoices] = useState<PendingInvoice | null>(null)
+  const [pendingInvoices, setPendingInvoices] = useState<PendingInvoice[]>([])
+  const [selectedInvoiceIndex, setSelectedInvoiceIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -122,6 +69,7 @@ export default function InvoiceDisplay() {
       setIsLoading(true)
       try {
         const data = await api.invoice.getPendingInvoices()
+        console.log('Fetched pending invoices:', data)
         setPendingInvoices(data)
         setError(null)
       } catch (err) {
@@ -142,7 +90,7 @@ export default function InvoiceDisplay() {
   }
 
   // Use the first pending invoice or fall back to mock data if API call fails
-  const invoiceData = pendingInvoices !== null ? pendingInvoices : {
+  const invoiceData = pendingInvoices.length > 0 ? pendingInvoices[selectedInvoiceIndex] : {
     id: "INV-2023-0042",
     confidence: 90,
     merchant: {
