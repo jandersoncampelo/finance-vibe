@@ -55,6 +55,7 @@ function ConfidenceIndicator({ value }: { value: number }) {
 }
 
 export default function InvoiceDisplay() {
+  console.log('Component rendering...')
   const [openSupplierDialog, setOpenSupplierDialog] = useState(false)
   const [openProductDialog, setOpenProductDialog] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
@@ -64,17 +65,20 @@ export default function InvoiceDisplay() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    console.log('useEffect triggered')
     // Function to fetch pending invoices using the API service
     const fetchPendingInvoices = async () => {
+      console.log('Starting fetchPendingInvoices...')
       setIsLoading(true)
       try {
+        console.log('Making API call to fetch pending invoices...')
         const data = await api.invoice.getPendingInvoices()
-        console.log('Fetched pending invoices:', data)
+        console.log('API call successful. Response:', data)
         setPendingInvoices(data)
         setError(null)
       } catch (err) {
+        console.error('Detailed API error:', err)
         setError('Error fetching pending invoices: ' + (err instanceof Error ? err.message : 'Unknown error'))
-        console.error('Error fetching pending invoices:', err)
       } finally {
         setIsLoading(false)
       }

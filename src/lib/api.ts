@@ -1,16 +1,61 @@
 // API base URL
-const API_BASE_URL = 'https://localhost:44333/api';
-import { PendingInvoice , Transaction, DashboardSummary} from './types';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:44333/api';
+import { PendingInvoice, Transaction, DashboardSummary } from './types';
+
+// Transform API response to our expected format
+function transformInvoiceResponse(response: any): PendingInvoice[] {
+  return response.results.map((item: any) => {
+    const content = item.document.content;
+    return {
+      id: item.document.id,
+      confidence: item.document.confidence,
+      merchant: {
+        name: content.merchant.name.value,
+        nameConfidence: content.merchant.name.confidence * 100,
+        cnpj: content.merchant.cnpj?.value || '',
+        cnpjConfidence: content.merchant.cnpj?.confidence * 100 || 0,
+        address: content.merchant.address?.value || '',
+        addressConfidence: content.merchant.address?.confidence * 100 || 0,
+        isRegistered: false
+      },
+      items: content.itens.map((item: any) => ({
+        code: parseInt(item.code.value.replace(/[^0-9]/g, '')),
+        codeConfidence: item.code.confidence * 100,
+        description: item.description.value,
+        descriptionConfidence: item.description.confidence * 100,
+        quantity: item.quantity.value,
+        quantityConfidence: item.quantity.confidence * 100,
+        price: item.price.value,
+        priceConfidence: item.price.confidence * 100,
+        unit: item.unit.value,
+        unitConfidence: item.unit.confidence * 100,
+        totalPrice: item.totalPrice.value,
+        totalPriceConfidence: item.totalPrice.confidence * 100,
+        isRegistered: false
+      })),
+      total: content.total.value,
+      totalConfidence: content.total.confidence * 100,
+      totalTax: content.totalTax?.value || 0,
+      totalTaxConfidence: content.totalTax?.confidence * 100 || 0,
+      transactionDate: new Date(content.transactionDate.value).toISOString().split('T')[0],
+      transactionDateConfidence: content.transactionDate.confidence * 100,
+      isRegistered: false
+    };
+  });
+}
 
 // Error handling wrapper for fetch requests
 async function fetchWrapper<T>(endpoint: string, options?: RequestInit): Promise<T> {
   try {
+    console.log(`Making request to: ${API_BASE_URL}${endpoint}`);
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
         ...(options?.headers || {}),
       },
+      mode: 'cors',
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -20,9 +65,19 @@ async function fetchWrapper<T>(endpoint: string, options?: RequestInit): Promise
       );
     }
 
-    return await response.json();
+    const data = await response.json();
+    
+    // Transform the response if it's an invoice endpoint
+    if (endpoint.includes('/invoice')) {
+      return transformInvoiceResponse(data) as T;
+    }
+
+    return data;
   } catch (error) {
     console.error('API request failed:', error);
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      console.error('Network error - Check if the API server is running and accessible');
+    }
     throw error;
   }
 }
