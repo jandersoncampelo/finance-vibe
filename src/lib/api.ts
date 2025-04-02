@@ -1,47 +1,54 @@
 // API base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:44333/api';
-import { PendingInvoice, Transaction, DashboardSummary } from './types';
+import { PendingInvoice, Transaction, DashboardSummary, PendingInvoicesResponse } from './types';
 
 // Transform API response to our expected format
-function transformInvoiceResponse(response: any): PendingInvoice[] {
-  return response.results.map((item: any) => {
-    const content = item.document.content;
+function transformInvoiceResponse(response: any): PendingInvoicesResponse {
+  const invoices = response.results.map((item: any) => {
+    const content = item.document?.content || {};
     return {
-      id: item.document.id,
-      confidence: item.document.confidence,
-      merchant: {
-        name: content.merchant.name.value,
-        nameConfidence: content.merchant.name.confidence * 100,
-        cnpj: content.merchant.cnpj?.value || '',
-        cnpjConfidence: content.merchant.cnpj?.confidence * 100 || 0,
-        address: content.merchant.address?.value || '',
-        addressConfidence: content.merchant.address?.confidence * 100 || 0,
+      id: item.document?.id || '',
+      confidence: item.document?.confidence || null,
+      merchant: content.merchant ? {
+        name: content.merchant?.name?.value || null,
+        nameConfidence: content.merchant?.name?.confidence ? content.merchant.name.confidence * 100 : null,
+        cnpj: content.merchant?.cnpj?.value || null,
+        cnpjConfidence: content.merchant?.cnpj?.confidence ? content.merchant.cnpj.confidence * 100 : null,
+        address: content.merchant?.address?.value || null,
+        addressConfidence: content.merchant?.address?.confidence ? content.merchant.address.confidence * 100 : null,
         isRegistered: false
-      },
-      items: content.itens.map((item: any) => ({
-        code: parseInt(item.code.value.replace(/[^0-9]/g, '')),
-        codeConfidence: item.code.confidence * 100,
-        description: item.description.value,
-        descriptionConfidence: item.description.confidence * 100,
-        quantity: item.quantity.value,
-        quantityConfidence: item.quantity.confidence * 100,
-        price: item.price.value,
-        priceConfidence: item.price.confidence * 100,
-        unit: item.unit.value,
-        unitConfidence: item.unit.confidence * 100,
-        totalPrice: item.totalPrice.value,
-        totalPriceConfidence: item.totalPrice.confidence * 100,
+      } : null,
+      items: Array.isArray(content.itens) ? content.itens.map((item: any) => ({
+        code: item?.code?.value ? parseInt(item.code.value.replace(/[^0-9]/g, '')) : null,
+        codeConfidence: item?.code?.confidence ? item.code.confidence * 100 : null,
+        description: item?.description?.value || null,
+        descriptionConfidence: item?.description?.confidence ? item.description.confidence * 100 : null,
+        quantity: item?.quantity?.value || null,
+        quantityConfidence: item?.quantity?.confidence ? item.quantity.confidence * 100 : null,
+        price: item?.price?.value || null,
+        priceConfidence: item?.price?.confidence ? item.price.confidence * 100 : null,
+        unit: item?.unit?.value || null,
+        unitConfidence: item?.unit?.confidence ? item.unit.confidence * 100 : null,
+        totalPrice: item?.totalPrice?.value || null,
+        totalPriceConfidence: item?.totalPrice?.confidence ? item.totalPrice.confidence * 100 : null,
         isRegistered: false
-      })),
-      total: content.total.value,
-      totalConfidence: content.total.confidence * 100,
-      totalTax: content.totalTax?.value || 0,
-      totalTaxConfidence: content.totalTax?.confidence * 100 || 0,
-      transactionDate: new Date(content.transactionDate.value).toISOString().split('T')[0],
-      transactionDateConfidence: content.transactionDate.confidence * 100,
+      })) : null,
+      total: content?.total?.value || null,
+      totalConfidence: content?.total?.confidence ? content.total.confidence * 100 : null,
+      totalTax: content?.totalTax?.value || null,
+      totalTaxConfidence: content?.totalTax?.confidence ? content.totalTax.confidence * 100 : null,
+      transactionDate: content?.transactionDate?.value ? 
+        new Date(content.transactionDate.value).toISOString().split('T')[0] : null,
+      transactionDateConfidence: content?.transactionDate?.confidence ? 
+        content.transactionDate.confidence * 100 : null,
       isRegistered: false
     };
   });
+
+  return {
+    results: invoices,
+    continuationToken: response.continuationToken || undefined
+  };
 }
 
 // Error handling wrapper for fetch requests
@@ -66,7 +73,7 @@ async function fetchWrapper<T>(endpoint: string, options?: RequestInit): Promise
     }
 
     const data = await response.json();
-    
+    console.log('API response:', data);
     // Transform the response if it's an invoice endpoint
     if (endpoint.includes('/invoice')) {
       return transformInvoiceResponse(data) as T;
@@ -84,7 +91,10 @@ async function fetchWrapper<T>(endpoint: string, options?: RequestInit): Promise
 
 // Invoice related API calls
 export const invoiceApi = {
-  getPendingInvoices: () => fetchWrapper<PendingInvoice[]>('/invoice/pendings'),
+  getPendingInvoices: (continuationToken?: string) => {
+    const queryParams = continuationToken ? `?continuationToken=${encodeURIComponent(continuationToken)}` : '';
+    return fetchWrapper<PendingInvoicesResponse>(`/invoice/pendings${queryParams}`);
+  },
   getInvoiceById: (id: string) => fetchWrapper<PendingInvoice>(`/invoice/${id}`),
   processInvoice: (id: string) => fetchWrapper<void>(`/invoice/${id}/process`, {
     method: 'POST',

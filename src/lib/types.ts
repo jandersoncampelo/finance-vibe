@@ -2,43 +2,48 @@
 
 export interface PendingInvoice {
   id: string;
-  confidence: number;
-  merchant: Merchant;
-  items: Product[];
-  total: number;
-  totalConfidence: number;
-  totalTax: number;
-  totalTaxConfidence: number;
-  transactionDate: string;
-  transactionDateConfidence: number;
-  isRegistered: boolean;
+  confidence?: number | null;
+  merchant?: Merchant | null;
+  items?: Product[] | null;
+  total?: number | null;
+  totalConfidence?: number | null;
+  totalTax?: number | null;
+  totalTaxConfidence?: number | null;
+  transactionDate?: string | null;
+  transactionDateConfidence?: number | null;
+  isRegistered?: boolean | null;
 }
 
 // Define interface for product items
 export interface Product {
-  code: number;
-  codeConfidence: number;
-  description: string;
-  descriptionConfidence: number;
-  price: number;
-  priceConfidence: number;
-  quantity: number;
-  quantityConfidence: number;
-  unit: string;
-  unitConfidence: number;
-  totalPrice: number;
-  totalPriceConfidence: number;
-  isRegistered: boolean;
+  code?: number | null;
+  codeConfidence?: number | null;
+  description?: string | null;
+  descriptionConfidence?: number | null;
+  price?: number | null;
+  priceConfidence?: number | null;
+  quantity?: number | null;
+  quantityConfidence?: number | null;
+  unit?: string | null;
+  unitConfidence?: number | null;
+  totalPrice?: number | null;
+  totalPriceConfidence?: number | null;
+  isRegistered?: boolean | null;
 }
 
 export interface Merchant {
-  name: string;
-  nameConfidence: number;
-  cnpj: string;
-  cnpjConfidence: number;
-  address: string;
-  addressConfidence: number;
-  isRegistered: boolean;
+  name?: string | null;
+  nameConfidence?: number | null;
+  cnpj?: string | null;
+  cnpjConfidence?: number | null;
+  address?: string | null;
+  addressConfidence?: number | null;
+  isRegistered?: boolean | null;
+}
+
+export interface PendingInvoicesResponse {
+  results: PendingInvoice[];
+  continuationToken?: string;
 }
 
 export interface Transaction {
