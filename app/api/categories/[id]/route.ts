@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../../src/lib/prisma';
+import prisma from '@/lib/prisma';
 
 // GET /api/categories/[id] - Obter uma categoria específica
 export async function GET(

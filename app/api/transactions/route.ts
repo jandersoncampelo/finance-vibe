@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../src/lib/prisma';
+import prisma from '@/lib/prisma';
 
 // GET /api/transactions - Listar todas as transações
 export async function GET() {
@@ -7,6 +7,7 @@ export async function GET() {
     const transactions = await prisma.transaction.findMany({
       include: {
         category: true,
+        account: true,
       },
       orderBy: {
         date: 'desc',
@@ -33,9 +34,11 @@ export async function POST(request: Request) {
         date: new Date(data.date),
         type: data.type,
         categoryId: data.categoryId,
+        accountId: data.accountId,
       },
       include: {
         category: true,
+        account: true,
       },
     });
     return NextResponse.json(transaction);

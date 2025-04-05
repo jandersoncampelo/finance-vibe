@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../../src/lib/prisma';
+import prisma from '@/lib/prisma';
+
+interface RouteParams {
+  params: {
+    id: string;
+  };
+}
 
 // GET /api/transactions/[id] - Obter uma transação específica
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: Request, { params }: RouteParams) {
   try {
     const transaction = await prisma.transaction.findUnique({
       where: {
         id: parseInt(params.id),
+      },
+      include: {
+        category: true,
+        account: true,
       },
     });
 
@@ -31,10 +38,7 @@ export async function GET(
 }
 
 // PUT /api/transactions/[id] - Atualizar uma transação
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const data = await request.json();
     const transaction = await prisma.transaction.update({
@@ -47,9 +51,11 @@ export async function PUT(
         date: new Date(data.date),
         type: data.type,
         categoryId: data.categoryId,
+        accountId: data.accountId,
       },
       include: {
         category: true,
+        account: true,
       },
     });
     return NextResponse.json(transaction);
@@ -63,10 +69,7 @@ export async function PUT(
 }
 
 // DELETE /api/transactions/[id] - Excluir uma transação
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     await prisma.transaction.delete({
       where: {

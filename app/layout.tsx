@@ -4,6 +4,7 @@ import "./globals.css";
 import { ConfigProvider } from "antd";
 import ptBR from "antd/locale/pt_BR";
 import ClientLayout from "./components/ClientLayout";
+import { AntdCompatibilityProvider } from "@/lib/antd-compatibility";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,18 +21,20 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={inter.className}>
-        <ConfigProvider
-          locale={ptBR}
-          theme={{
-            token: {
-              colorPrimary: "#1677ff",
-            },
-          }}
-        >
-          <ClientLayout>
-            {children}
-          </ClientLayout>
-        </ConfigProvider>
+        <AntdCompatibilityProvider>
+          <ConfigProvider
+            locale={ptBR}
+            theme={{
+              token: {
+                colorPrimary: "#1677ff",
+              },
+            }}
+          >
+            <ClientLayout>
+              {children}
+            </ClientLayout>
+          </ConfigProvider>
+        </AntdCompatibilityProvider>
       </body>
     </html>
   );

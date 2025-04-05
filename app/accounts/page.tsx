@@ -1,55 +1,56 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Form, Input, Select, Button, Table, Card, Modal, Popconfirm, App } from 'antd';
+import { Form, Input, InputNumber, Select, Button, Table, Card, Modal, Popconfirm, App } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Option } = Select;
 
-interface Category {
+interface Account {
   id: number;
   name: string;
-  type: 'income' | 'expense';
+  balance: number;
+  type: string;
 }
 
-export default function CategoriesPage() {
+export default function AccountsPage() {
   const [form] = Form.useForm();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { message } = App.useApp();
 
-  // Carregar categorias ao montar o componente
+  // Carregar contas ao montar o componente
   useEffect(() => {
-    fetchCategories();
+    fetchAccounts();
   }, []);
 
-  const fetchCategories = async () => {
+  const fetchAccounts = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/categories');
+      const response = await fetch('/api/accounts');
       if (!response.ok) {
-        throw new Error('Erro ao carregar categorias');
+        throw new Error('Erro ao carregar contas');
       }
       const data = await response.json();
-      setCategories(data);
+      setAccounts(data);
     } catch (error) {
-      console.error('Erro ao carregar categorias:', error);
-      message.error('Erro ao carregar categorias');
+      console.error('Erro ao carregar contas:', error);
+      message.error('Erro ao carregar contas');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const showModal = (category?: Category) => {
-    if (category) {
-      setEditingCategory(category);
-      form.setFieldsValue(category);
+  const showModal = (account?: Account) => {
+    if (account) {
+      setEditingAccount(account);
+      form.setFieldsValue(account);
     } else {
-      setEditingCategory(null);
+      setEditingAccount(null);
       form.resetFields();
     }
     setIsModalOpen(true);
@@ -57,7 +58,7 @@ export default function CategoriesPage() {
 
   const handleCancel = () => {
     form.resetFields();
-    setEditingCategory(null);
+    setEditingAccount(null);
     setIsModalOpen(false);
   };
 
@@ -65,9 +66,9 @@ export default function CategoriesPage() {
     try {
       setLoading(true);
       
-      if (editingCategory) {
-        // Atualizar categoria existente
-        const response = await fetch(`/api/categories/${editingCategory.id}`, {
+      if (editingAccount) {
+        // Atualizar conta existente
+        const response = await fetch(`/api/accounts/${editingAccount.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -76,13 +77,13 @@ export default function CategoriesPage() {
         });
 
         if (!response.ok) {
-          throw new Error('Erro ao atualizar categoria');
+          throw new Error('Erro ao atualizar conta');
         }
 
-        message.success('Categoria atualizada com sucesso!');
+        message.success('Conta atualizada com sucesso!');
       } else {
-        // Criar nova categoria
-        const response = await fetch('/api/categories', {
+        // Criar nova conta
+        const response = await fetch('/api/accounts', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -91,21 +92,21 @@ export default function CategoriesPage() {
         });
 
         if (!response.ok) {
-          throw new Error('Erro ao criar categoria');
+          throw new Error('Erro ao criar conta');
         }
 
-        message.success('Categoria cadastrada com sucesso!');
+        message.success('Conta cadastrada com sucesso!');
       }
       
-      // Recarregar categorias
-      fetchCategories();
+      // Recarregar contas
+      fetchAccounts();
       
       form.resetFields();
-      setEditingCategory(null);
+      setEditingAccount(null);
       setIsModalOpen(false);
     } catch (error) {
-      console.error('Erro ao salvar categoria:', error);
-      message.error('Erro ao salvar categoria');
+      console.error('Erro ao salvar conta:', error);
+      message.error('Erro ao salvar conta');
     } finally {
       setLoading(false);
     }
@@ -113,35 +114,54 @@ export default function CategoriesPage() {
 
   const handleDelete = async (id: number) => {
     try {
-      const response = await fetch(`/api/categories/${id}`, {
+      const response = await fetch(`/api/accounts/${id}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
-        throw new Error('Erro ao excluir categoria');
+        throw new Error('Erro ao excluir conta');
       }
 
-      message.success('Categoria excluída com sucesso!');
+      message.success('Conta excluída com sucesso!');
       
-      // Recarregar categorias
-      fetchCategories();
+      // Recarregar contas
+      fetchAccounts();
     } catch (error) {
-      console.error('Erro ao excluir categoria:', error);
-      message.error('Erro ao excluir categoria');
+      console.error('Erro ao excluir conta:', error);
+      message.error('Erro ao excluir conta');
     }
   };
 
-  const columns: ColumnsType<Category> = [
+  const columns: ColumnsType<Account> = [
     {
       title: 'Nome',
       dataIndex: 'name',
       key: 'name',
     },
     {
+      title: 'Saldo',
+      dataIndex: 'balance',
+      key: 'balance',
+      render: (balance: number) => 
+        new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL'
+        }).format(balance),
+    },
+    {
       title: 'Tipo',
       dataIndex: 'type',
       key: 'type',
-      render: (type: string) => type === 'income' ? 'Receita' : 'Despesa',
+      render: (type: string) => {
+        const typeMap: Record<string, string> = {
+          'checking': 'Conta Corrente',
+          'savings': 'Poupança',
+          'credit': 'Cartão de Crédito',
+          'investment': 'Investimento',
+          'other': 'Outro',
+        };
+        return typeMap[type] || type;
+      },
     },
     {
       title: 'Ações',
@@ -154,8 +174,8 @@ export default function CategoriesPage() {
             onClick={() => showModal(record)}
           />
           <Popconfirm
-            title="Excluir categoria"
-            description="Tem certeza que deseja excluir esta categoria?"
+            title="Excluir conta"
+            description="Tem certeza que deseja excluir esta conta?"
             onConfirm={() => handleDelete(record.id)}
             okText="Sim"
             cancelText="Não"
@@ -174,20 +194,20 @@ export default function CategoriesPage() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Categorias</h1>
+        <h1 className="text-2xl font-bold">Contas</h1>
         <Button 
           type="primary" 
           icon={<PlusOutlined />}
           onClick={() => showModal()}
         >
-          Nova Categoria
+          Nova Conta
         </Button>
       </div>
 
       <Card>
         <Table 
           columns={columns} 
-          dataSource={categories}
+          dataSource={accounts}
           rowKey="id"
           pagination={{ pageSize: 10 }}
           loading={isLoading}
@@ -195,7 +215,7 @@ export default function CategoriesPage() {
       </Card>
 
       <Modal
-        title={editingCategory ? "Editar Categoria" : "Nova Categoria"}
+        title={editingAccount ? "Editar Conta" : "Nova Conta"}
         open={isModalOpen}
         onCancel={handleCancel}
         footer={null}
@@ -205,14 +225,26 @@ export default function CategoriesPage() {
           form={form}
           layout="vertical"
           onFinish={onFinish}
-          initialValues={{ type: 'expense' }}
+          initialValues={{ type: 'checking' }}
         >
           <Form.Item
             name="name"
             label="Nome"
-            rules={[{ required: true, message: 'Digite o nome da categoria' }]}
+            rules={[{ required: true, message: 'Digite o nome da conta' }]}
           >
             <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="balance"
+            label="Saldo Inicial"
+            rules={[{ required: true, message: 'Digite o saldo inicial' }]}
+          >
+            <InputNumber
+              style={{ width: '100%' }}
+              formatter={value => `R$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              parser={value => value!.replace(/R\$\s?|(,*)/g, '')}
+            />
           </Form.Item>
 
           <Form.Item
@@ -221,8 +253,11 @@ export default function CategoriesPage() {
             rules={[{ required: true, message: 'Selecione o tipo' }]}
           >
             <Select>
-              <Option value="income">Receita</Option>
-              <Option value="expense">Despesa</Option>
+              <Option value="checking">Conta Corrente</Option>
+              <Option value="savings">Poupança</Option>
+              <Option value="credit">Cartão de Crédito</Option>
+              <Option value="investment">Investimento</Option>
+              <Option value="other">Outro</Option>
             </Select>
           </Form.Item>
 
@@ -235,7 +270,7 @@ export default function CategoriesPage() {
               htmlType="submit" 
               loading={loading}
             >
-              {editingCategory ? 'Atualizar' : 'Salvar'}
+              {editingAccount ? 'Atualizar' : 'Salvar'}
             </Button>
           </div>
         </Form>

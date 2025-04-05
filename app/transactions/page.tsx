@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Form, Input, InputNumber, DatePicker, Select, Button, Table, Card, Modal, message, Popconfirm } from 'antd';
+import { Form, Input, InputNumber, DatePicker, Select, Button, Table, Card, Modal, Popconfirm, App } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -14,6 +14,13 @@ interface Category {
   type: 'income' | 'expense';
 }
 
+interface Account {
+  id: number;
+  name: string;
+  balance: number;
+  type: string;
+}
+
 interface Transaction {
   id: number;
   description: string;
@@ -22,21 +29,26 @@ interface Transaction {
   type: 'income' | 'expense';
   categoryId: number;
   category?: Category;
+  accountId: number;
+  account?: Account;
 }
 
 export default function TransactionsPage() {
   const [form] = Form.useForm();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { message } = App.useApp();
 
-  // Carregar transações e categorias ao montar o componente
+  // Carregar transações, categorias e contas ao montar o componente
   useEffect(() => {
     fetchTransactions();
     fetchCategories();
+    fetchAccounts();
   }, []);
 
   const fetchCategories = async () => {
@@ -50,6 +62,20 @@ export default function TransactionsPage() {
     } catch (error) {
       console.error('Erro ao carregar categorias:', error);
       message.error('Erro ao carregar categorias');
+    }
+  };
+
+  const fetchAccounts = async () => {
+    try {
+      const response = await fetch('/api/accounts');
+      if (!response.ok) {
+        throw new Error('Erro ao carregar contas');
+      }
+      const data = await response.json();
+      setAccounts(data);
+    } catch (error) {
+      console.error('Erro ao carregar contas:', error);
+      message.error('Erro ao carregar contas');
     }
   };
 
@@ -194,6 +220,12 @@ export default function TransactionsPage() {
       render: (category: Category) => category?.name || '-',
     },
     {
+      title: 'Conta',
+      dataIndex: 'account',
+      key: 'account',
+      render: (account: Account) => account?.name || '-',
+    },
+    {
       title: 'Tipo',
       dataIndex: 'type',
       key: 'type',
@@ -311,6 +343,20 @@ export default function TransactionsPage() {
               {categories.map(category => (
                 <Option key={category.id} value={category.id}>
                   {category.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="accountId"
+            label="Conta"
+            rules={[{ required: true, message: 'Selecione a conta' }]}
+          >
+            <Select>
+              {accounts.map(account => (
+                <Option key={account.id} value={account.id}>
+                  {account.name}
                 </Option>
               ))}
             </Select>

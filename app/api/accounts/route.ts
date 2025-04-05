@@ -1,39 +1,40 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// GET /api/categories - Listar todas as categorias
+// GET /api/accounts - Listar todas as contas
 export async function GET() {
   try {
-    const categories = await prisma.category.findMany({
+    const accounts = await prisma.account.findMany({
       orderBy: {
         name: 'asc',
       },
     });
-    return NextResponse.json(categories);
+    return NextResponse.json(accounts);
   } catch (error) {
-    console.error('Erro ao buscar categorias:', error);
+    console.error('Erro ao buscar contas:', error);
     return NextResponse.json(
-      { error: 'Erro ao buscar categorias' },
+      { error: 'Erro ao buscar contas' },
       { status: 500 }
     );
   }
 }
 
-// POST /api/categories - Criar uma nova categoria
+// POST /api/accounts - Criar uma nova conta
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    const category = await prisma.category.create({
+    const account = await prisma.account.create({
       data: {
         name: data.name,
+        balance: parseFloat(data.balance) || 0,
         type: data.type,
       },
     });
-    return NextResponse.json(category);
+    return NextResponse.json(account);
   } catch (error) {
-    console.error('Erro ao criar categoria:', error);
+    console.error('Erro ao criar conta:', error);
     return NextResponse.json(
-      { error: 'Erro ao criar categoria' },
+      { error: 'Erro ao criar conta' },
       { status: 500 }
     );
   }
