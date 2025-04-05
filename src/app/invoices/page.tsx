@@ -1,274 +1,409 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { AlertCircle, FileText, ChevronDown } from 'lucide-react'
+import { useState } from "react"
+import {
+  Calendar,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  Download,
+  FileText,
+  Filter,
+  Plus,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react"
+import Link from "next/link"
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import api from "@/lib/api"
-import { Product, PendingInvoice, PendingInvoicesResponse } from "@/lib/types"
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-// Import the extracted components
-import { ConfidenceIndicator } from "./components/ConfidenceIndicator"
-import { SupplierCard } from "./components/SupplierCard"
-import { SupplierRegistrationDialog } from "./components/SupplierRegistrationDialog"
-import { InvoiceDetailsCard } from "./components/InvoiceDetailsCard"
-import { ProductsTable } from "./components/ProductsTable"
-import { ProductRegistrationDialog } from "./components/ProductRegistrationDialog"
-
-// Dados de fatura padrão para ser usados quando a API retornar dados incompletos
-const defaultInvoiceData: PendingInvoice = {
-  id: "INV-2023-0042",
-  confidence: 90,
-  merchant: {
-    name: "Tech Supplies Ltd",
-    nameConfidence: 85,
-    cnpj: "12.345.678/0001-90",
-    cnpjConfidence: 92,
-    address: "123 Tech Street, Tech City",
-    addressConfidence: 70,
-    isRegistered: false
-  },
-  items: [
-    {
-      code: 1,
-      codeConfidence: 95,
-      description: "Laptop Dell XPS 15",
-      descriptionConfidence: 96,
-      quantity: 2,
-      quantityConfidence: 99,
-      price: 899.99,
-      priceConfidence: 95,
-      unit: "un",
-      unitConfidence: 100,
-      totalPrice: 1799.98,
-      totalPriceConfidence: 97,
-      isRegistered: true,
-    },
-    {
-      code: 2,
-      codeConfidence: 90,
-      description: "Monitor UltraWide 34\"",
-      descriptionConfidence: 78,
-      quantity: 1,
-      quantityConfidence: 99,
-      price: 499.99,
-      priceConfidence: 85,
-      unit: "un",
-      unitConfidence: 100,
-      totalPrice: 499.99,
-      totalPriceConfidence: 92,
-      isRegistered: false,
-    },
-    {
-      code: 3,
-      codeConfidence: 88,
-      description: "Wireless Keyboard",
-      descriptionConfidence: 88,
-      quantity: 3,
-      quantityConfidence: 97,
-      price: 50.25,
-      priceConfidence: 90,
-      unit: "un",
-      unitConfidence: 100,
-      totalPrice: 150.75,
-      totalPriceConfidence: 95,
-      isRegistered: true,
-    },
-  ],
-  total: 2450.75,
-  totalConfidence: 98,
-  totalTax: 245.07,
-  totalTaxConfidence: 90,
-  transactionDate: "2023-11-15",
-  transactionDateConfidence: 95,
-  isRegistered: false
-};
-
-// Main component
-export default function InvoiceDisplay() {
-  const [openSupplierDialog, setOpenSupplierDialog] = useState(false)
-  const [openProductDialog, setOpenProductDialog] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [pendingInvoices, setPendingInvoices] = useState<PendingInvoice[]>([])
-  const [continuationToken, setContinuationToken] = useState<string | undefined>(undefined)
-  const [selectedInvoiceIndex, setSelectedInvoiceIndex] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // Function to fetch pending invoices using the API service
-  const fetchPendingInvoices = async (token?: string) => {
-    if (token) {
-      setIsLoadingMore(true)
-    } else {
-      setIsLoading(true)
-    }
-    
-    try {
-      const data = await api.invoice.getPendingInvoices(token)
-      if (token) {
-        // Append new invoices to existing ones
-        setPendingInvoices(prev => [...prev, ...(data.results || [])])
-      } else {
-        // Replace existing invoices with new ones
-        setPendingInvoices(data.results || [])
-      }
-      // Store the continuation token for pagination
-      setContinuationToken(data.continuationToken)
-      setError(null)
-    } catch (err) {
-      console.error('Detailed API error:', err)
-      setError('Error fetching pending invoices: ' + (err instanceof Error ? err.message : 'Unknown error'))
-    } finally {
-      setIsLoading(false)
-      setIsLoadingMore(false)
-    }
+// Componente para indicador de confiança
+function ConfidenceIndicator({ value }: { value: number }) {
+  // Determine color based on confidence value
+  const getColor = (confidence: number) => {
+    if (confidence >= 90) return "bg-green-500"
+    if (confidence >= 70) return "bg-amber-500"
+    return "bg-red-500"
   }
-
-  useEffect(() => {
-    // Call the fetch function when component mounts
-    fetchPendingInvoices()
-  }, [])
-
-  const handleRegisterProduct = (product: Product) => {
-    setSelectedProduct(product)
-    setOpenProductDialog(true)
-  }
-
-  const handleOpenSupplierDialog = () => {
-    setOpenSupplierDialog(true)
-  }
-
-  const handleLoadMore = () => {
-    if (continuationToken) {
-      fetchPendingInvoices(continuationToken)
-    }
-  }
-
-  // Use the first pending invoice or fall back to mock data if API call fails
-  const invoiceData = pendingInvoices.length > 0 ? pendingInvoices[selectedInvoiceIndex] : defaultInvoiceData;
-
-  // Garantir que valores esperados existam, mesmo que venham nulos da API
-  const safeInvoiceData = {
-    ...invoiceData,
-    id: invoiceData.id || 'ID não disponível', // ID é o único campo que não deveria ser nulo
-    merchant: invoiceData.merchant || defaultInvoiceData.merchant,
-    items: invoiceData.items || [],
-    total: invoiceData.total !== null && invoiceData.total !== undefined ? invoiceData.total : 0,
-    totalConfidence: invoiceData.totalConfidence,
-    totalTax: invoiceData.totalTax,
-    totalTaxConfidence: invoiceData.totalTaxConfidence,
-    transactionDate: invoiceData.transactionDate || 'Data não disponível',
-    transactionDateConfidence: invoiceData.transactionDateConfidence,
-    isRegistered: invoiceData.isRegistered || false
-  };
 
   return (
-    <div className="container mx-auto py-6 px-4 max-w-5xl">
-      {isLoading && (
-        <Alert className="mb-6">
-          <AlertTitle>Loading</AlertTitle>
-          <AlertDescription>
-            Carregando faturas pendentes...
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro</AlertTitle>
-          <AlertDescription>
-            {error}
-          </AlertDescription>
-        </Alert>
-      )}
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-1.5">
+            <div className="h-1.5 w-12 bg-gray-200 rounded-full overflow-hidden">
+              <div className={`h-full ${getColor(value)} rounded-full`} style={{ width: `${value}%` }} />
+            </div>
+            <span className="text-xs text-muted-foreground">{value}%</span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Nível de confiança: {value}%</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
 
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <FileText className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Fatura de Compra</h1>
+// Mock data para as faturas
+const invoices = [
+  {
+    id: "INV-2023-0042",
+    supplier: "Tech Supplies Ltd",
+    date: "15/11/2023",
+    dueDate: "15/12/2023",
+    total: 2450.75,
+    status: "pending",
+    confidence: 85,
+    items: 3,
+    isSupplierRegistered: false,
+    hasUnregisteredItems: true,
+  },
+  {
+    id: "INV-2023-0041",
+    supplier: "Office Solutions Inc",
+    date: "12/11/2023",
+    dueDate: "12/12/2023",
+    total: 1250.0,
+    status: "processed",
+    confidence: 92,
+    items: 5,
+    isSupplierRegistered: true,
+    hasUnregisteredItems: false,
+  },
+  {
+    id: "INV-2023-0040",
+    supplier: "Digital Innovations",
+    date: "10/11/2023",
+    dueDate: "10/12/2023",
+    total: 3750.5,
+    status: "pending",
+    confidence: 78,
+    items: 8,
+    isSupplierRegistered: true,
+    hasUnregisteredItems: true,
+  },
+  {
+    id: "INV-2023-0039",
+    supplier: "Hardware Depot",
+    date: "05/11/2023",
+    dueDate: "05/12/2023",
+    total: 980.25,
+    status: "processed",
+    confidence: 95,
+    items: 4,
+    isSupplierRegistered: true,
+    hasUnregisteredItems: false,
+  },
+  {
+    id: "INV-2023-0038",
+    supplier: "Network Systems",
+    date: "01/11/2023",
+    dueDate: "01/12/2023",
+    total: 5200.0,
+    status: "processed",
+    confidence: 90,
+    items: 12,
+    isSupplierRegistered: true,
+    hasUnregisteredItems: false,
+  },
+  {
+    id: "INV-2023-0037",
+    supplier: "Global Tech Partners",
+    date: "28/10/2023",
+    dueDate: "28/11/2023",
+    total: 1875.3,
+    status: "pending",
+    confidence: 82,
+    items: 6,
+    isSupplierRegistered: false,
+    hasUnregisteredItems: true,
+  },
+  {
+    id: "INV-2023-0036",
+    supplier: "Smart Solutions",
+    date: "25/10/2023",
+    dueDate: "25/11/2023",
+    total: 3450.0,
+    status: "processed",
+    confidence: 88,
+    items: 9,
+    isSupplierRegistered: true,
+    hasUnregisteredItems: false,
+  },
+  {
+    id: "INV-2023-0035",
+    supplier: "Office Furniture Co",
+    date: "20/10/2023",
+    dueDate: "20/11/2023",
+    total: 7250.75,
+    status: "processed",
+    confidence: 93,
+    items: 15,
+    isSupplierRegistered: true,
+    hasUnregisteredItems: false,
+  },
+]
+
+export default function InvoiceList() {
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState("date")
+
+  // Filtrar faturas com base na pesquisa e filtros
+  const filteredInvoices = invoices.filter((invoice) => {
+    // Filtro de pesquisa
+    const matchesSearch =
+      invoice.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invoice.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+
+    // Filtro de status
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(invoice.status)
+
+    return matchesSearch && matchesStatus
+  })
+
+  // Ordenar faturas
+  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
+    switch (sortBy) {
+      case "date":
+        return (
+          new Date(a.date.split("/").reverse().join("-")).getTime() -
+          new Date(b.date.split("/").reverse().join("-")).getTime()
+        )
+      case "total":
+        return b.total - a.total
+      case "confidence":
+        return b.confidence - a.confidence
+      default:
+        return 0
+    }
+  })
+
+  // Função para obter a cor do status
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "processed":
+        return "bg-green-50 text-green-700 border-green-200"
+      case "pending":
+        return "bg-amber-50 text-amber-700 border-amber-200"
+      default:
+        return "bg-gray-50 text-gray-700 border-gray-200"
+    }
+  }
+
+  // Função para obter o texto do status
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "processed":
+        return "Processada"
+      case "pending":
+        return "Pendente"
+      default:
+        return status
+    }
+  }
+
+  return (
+    <div className="container mx-auto py-6 px-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Faturas de Compra</h1>
+          <p className="text-muted-foreground">Gerencie e visualize todas as suas faturas</p>
         </div>
-        <Badge variant="outline" className="text-sm">
-          {safeInvoiceData.id}
-        </Badge>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Nova Fatura
+        </Button>
       </div>
 
-      {/* Navigation between invoices */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-sm">
-            {selectedInvoiceIndex + 1} de {pendingInvoices.length}
-          </Badge>
+      {/* Filtros e Pesquisa */}
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Buscar faturas..."
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSelectedInvoiceIndex(prev => Math.max(0, prev - 1))}
-            disabled={selectedInvoiceIndex === 0}
-          >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Filtrar
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Status</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={statusFilter.includes("processed")}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setStatusFilter([...statusFilter, "processed"])
+                  } else {
+                    setStatusFilter(statusFilter.filter((s) => s !== "processed"))
+                  }
+                }}
+              >
+                Processadas
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={statusFilter.includes("pending")}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setStatusFilter([...statusFilter, "pending"])
+                  } else {
+                    setStatusFilter(statusFilter.filter((s) => s !== "pending"))
+                  }
+                }}
+              >
+                Pendentes
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Fornecedor</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem>Cadastrados</DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem>Não Cadastrados</DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[180px]">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4" />
+                <SelectValue placeholder="Ordenar por" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date">Data (mais recente)</SelectItem>
+              <SelectItem value="total">Valor (maior)</SelectItem>
+              <SelectItem value="confidence">Confiança (maior)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Lista de Faturas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {sortedInvoices.map((invoice) => (
+          <Link href={`/invoices/${invoice.id}`} key={invoice.id} className="block">
+            <Card className="h-full hover:shadow-md transition-shadow">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold">{invoice.id}</h3>
+                    <p className="text-sm text-muted-foreground">{invoice.supplier}</p>
+                  </div>
+                  <Badge variant="outline" className={getStatusColor(invoice.status)}>
+                    {invoice.status === "processed" && <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
+                    {invoice.status === "pending" && <Clock className="h-3.5 w-3.5 mr-1" />}
+                    {getStatusText(invoice.status)}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-2">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span>Emissão:</span>
+                    </div>
+                    <span className="text-sm">{invoice.date}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span>Vencimento:</span>
+                    </div>
+                    <span className="text-sm">{invoice.dueDate}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Itens:</span>
+                    <span className="text-sm">{invoice.items}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Confiança:</span>
+                    <ConfidenceIndicator value={invoice.confidence} />
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="font-medium">Total:</span>
+                    <span className="font-bold">R$ {invoice.total.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Alertas */}
+                <div className="mt-3 space-y-2">
+                  {!invoice.isSupplierRegistered && (
+                    <div className="text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded-sm">
+                      Fornecedor não cadastrado
+                    </div>
+                  )}
+                  {invoice.hasUnregisteredItems && (
+                    <div className="text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded-sm">
+                      Produtos não cadastrados
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+              <CardFooter className="pt-2">
+                <div className="flex justify-between w-full">
+                  <Button variant="ghost" size="sm" className="text-xs" asChild>
+                    <span>
+                      <FileText className="h-3.5 w-3.5 mr-1" />
+                      Visualizar
+                    </span>
+                  </Button>
+                  <Button variant="ghost" size="sm" className="text-xs">
+                    <Download className="h-3.5 w-3.5 mr-1" />
+                    Baixar PDF
+                  </Button>
+                </div>
+              </CardFooter>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      {/* Paginação */}
+      <div className="flex justify-center mt-6">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled>
             Anterior
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSelectedInvoiceIndex(prev => Math.min(pendingInvoices.length - 1, prev + 1))}
-            disabled={selectedInvoiceIndex === pendingInvoices.length - 1 || pendingInvoices.length === 0}
-          >
+          <Button variant="outline" size="sm" className="bg-primary text-primary-foreground">
+            1
+          </Button>
+          <Button variant="outline" size="sm">
+            2
+          </Button>
+          <Button variant="outline" size="sm">
+            3
+          </Button>
+          <Button variant="outline" size="sm">
             Próxima
           </Button>
         </div>
       </div>
-
-      {/* Supplier Information */}
-      <SupplierCard 
-        merchant={safeInvoiceData.merchant} 
-        onOpenSupplierDialog={handleOpenSupplierDialog} 
-      />
-      
-      {/* Supplier Registration Dialog */}
-      <SupplierRegistrationDialog 
-        open={openSupplierDialog} 
-        onOpenChange={setOpenSupplierDialog}
-        merchant={safeInvoiceData.merchant}
-      />
-
-      {/* Invoice Details */}
-      <InvoiceDetailsCard invoice={safeInvoiceData} />
-
-      {/* Products Table */}
-      <ProductsTable 
-        products={safeInvoiceData.items}
-        total={safeInvoiceData.total}
-        totalConfidence={safeInvoiceData.totalConfidence}
-        onRegisterProduct={handleRegisterProduct}
-        supplierRegistered={safeInvoiceData.merchant?.isRegistered}
-      />
-
-      {/* Product Registration Dialog */}
-      <ProductRegistrationDialog 
-        open={openProductDialog}
-        onOpenChange={setOpenProductDialog}
-        product={selectedProduct}
-      />
-
-      {/* Load More Button */}
-      {continuationToken && (
-        <div className="flex justify-center mt-8 mb-4">
-          <Button
-            variant="outline"
-            onClick={handleLoadMore}
-            disabled={isLoadingMore}
-            className="flex items-center gap-2"
-          >
-            {isLoadingMore ? "Carregando..." : "Carregar mais faturas"}
-            {!isLoadingMore && <ChevronDown className="h-4 w-4" />}
-          </Button>
-        </div>
-      )}
     </div>
   )
 }
+
